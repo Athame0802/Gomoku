@@ -99,8 +99,8 @@ namespace Gomoku
                 {
                     for (int j = 0; j < 4; j++)
                     {
-                        directionOpenStoneTotal[i, j] = CheckBrokenOpen(new Stone(StoneType.Black, x, y), (short)(i * 4 + j), out checkedOpenStones[i, j], out isOpenJumpedBeforeTurningArray[i, j]);
-                        directionTwoRangeOpenStoneTotal[i, j] = CheckBrokenOpen(new Stone(StoneType.Black, x, y), (short)(i * 4 + j), out checkedTwoRangeOpenStones[i, j], out isTwoRangeOpenJumpedBeforeTurningArray[i, j], 2);
+                        directionOpenStoneTotal[i, j] = CheckBrokenOpen(new Stone(StoneType.Black, x, y), (short)(i * 4 + j), false, out checkedOpenStones[i, j], out isOpenJumpedBeforeTurningArray[i, j]);
+                        directionTwoRangeOpenStoneTotal[i, j] = CheckBrokenOpen(new Stone(StoneType.Black, x, y), (short)(i * 4 + j), true, out checkedTwoRangeOpenStones[i, j], out isTwoRangeOpenJumpedBeforeTurningArray[i, j], 2);
                         directionStoneTotal[i, j] = CheckBroken(new Stone(StoneType.Black, x, y), (short)(i * 4 + j));
                     }
                 }
@@ -126,7 +126,7 @@ namespace Gomoku
                                 found3 = j;
                                 is3JumpedBeforeTurning = isTwoRangeOpenJumpedBeforeTurningArray[i, j];
 
-                                if (FoundSecond(checkedTwoRangeOpenStones[i, j], 3, "33 금수입니다!", 2))
+                                if (FoundSecond(checkedTwoRangeOpenStones[i, j], 3, "33 금수입니다!", true, 2))
                                 {
                                     return;
                                 }
@@ -144,7 +144,7 @@ namespace Gomoku
                                 found4 = j;
                                 is4JumpedBeforeTurning = isOpenJumpedBeforeTurningArray[i, j];
 
-                                if (FoundSecond(checkedOpenStones[i, j], 4, "44 금수입니다!", 1))
+                                if (FoundSecond(checkedOpenStones[i, j], 4, "44 금수입니다!", false, 1))
                                 {
                                     return;
                                 }
@@ -180,7 +180,7 @@ namespace Gomoku
             if (isBlackTurn) isBlackTurn = false;
             else isBlackTurn = true;
 
-            bool FoundSecond(List<Stone> stonesList, int criteria, string message, short openRange = 1)
+            bool FoundSecond(List<Stone> stonesList, int criteria, string message, bool shouldBothOpenAtLeast1, short openRange = 1)
             {
                 short[,,] secondLastStoneDirectionCheck = new short[stonesList.Count, 2, 4];
 
@@ -190,7 +190,7 @@ namespace Gomoku
                     {
                         for (int l = 0; l < 4; l++)
                         {
-                            secondLastStoneDirectionCheck[a, k, l] = CheckBrokenOpen(stonesList[a], (short)(k * 4 + l), out bool isJumped, openRange);
+                            secondLastStoneDirectionCheck[a, k, l] = CheckBrokenOpen(stonesList[a], (short)(k * 4 + l), shouldBothOpenAtLeast1, out bool isJumped, openRange);
                         }
                     }
 
@@ -309,7 +309,7 @@ namespace Gomoku
             }
         }
 
-        private short CheckBrokenOpen(Stone playedStone, short _direction, out bool isJumpedBeforeTurning, short openRange = 1)
+        private short CheckBrokenOpen(Stone playedStone, short _direction, bool shouldBothOpenAtLeast1, out bool isJumpedBeforeTurning, short openRange = 1)
         {
         /*
          * 띈 돌 체크 메서드 2 : int CheckBrokenOpen(Stone PlayedStone, short direction) > 반환값 : 해당 방향으로 몇 개 있는지
@@ -340,7 +340,14 @@ namespace Gomoku
                         if (!isOneBlocked) isOneBlocked = true;
                         else
                         {
-                            return -1;
+                            if (shouldBothOpenAtLeast1)
+                                return -1;
+
+                            if (!isOneBlocked) isOneBlocked = true;
+                            else
+                            {
+                                return -1;
+                            }
                         }
 
                         break;
@@ -385,6 +392,9 @@ namespace Gomoku
                             {
                                 if (!TryChangeXY((short)(checkX + directionOfStone[0]), (short)(checkY + directionOfStone[1])))
                                 {
+                                    if (j == 0 && shouldBothOpenAtLeast1)
+                                        return -1;
+
                                     if (!isOneBlocked) isOneBlocked = true;
                                     else
                                     {
@@ -394,31 +404,17 @@ namespace Gomoku
                                     break;
                                 }
 
-                                if (playedStone.type == StoneType.Black)
+                                if (board[checkY, checkX] == StoneType.White)
                                 {
-                                    if (board[checkY, checkX] == StoneType.White)
-                                    {
-                                        if (!isOneBlocked) isOneBlocked = true;
-                                        else
-                                        {
-                                            return -1;
-                                        }
+                                    if (j == 0 && shouldBothOpenAtLeast1) return -1;
 
-                                        break;
-                                    }
-                                }
-                                else
-                                {
-                                    if (board[checkY, checkX] == StoneType.Black)
+                                    if (!isOneBlocked) isOneBlocked = true;
+                                    else
                                     {
-                                        if (!isOneBlocked) isOneBlocked = true;
-                                        else
-                                        {
-                                            return -1;
-                                        }
-                                        break;
+                                        return -1;
                                     }
 
+                                    break;
                                 }
                             }
 
@@ -442,6 +438,9 @@ namespace Gomoku
                         {
                             if (!TryChangeXY((short)(checkX + directionOfStone[0]), (short)(checkY + directionOfStone[1])))
                             {
+                                if (j == 0 && shouldBothOpenAtLeast1)
+                                    return -1;
+
                                 if (!isOneBlocked) isOneBlocked = true;
                                 else
                                 {
@@ -451,18 +450,18 @@ namespace Gomoku
                                 break;
                             }
 
-                            if (playedStone.type == StoneType.Black)
+                            if (board[checkY, checkX] == StoneType.White)
                             {
-                                if (board[checkY, checkX] == StoneType.White)
-                                {
-                                    if (!isOneBlocked) isOneBlocked = true;
-                                    else
-                                    {
-                                        return -1;
-                                    }
+                                if (j == 0 && shouldBothOpenAtLeast1)
+                                    return -1;
 
-                                    break;
+                                if (!isOneBlocked) isOneBlocked = true;
+                                else
+                                {
+                                    return -1;
                                 }
+
+                                break;
                             }
                         }
 
@@ -494,7 +493,7 @@ namespace Gomoku
             }
         }
 
-        private short CheckBrokenOpen(Stone playedStone, short _direction, out List<Stone> CheckedStones, out bool isJumpedBeforeTurning, short openRange = 1)
+        private short CheckBrokenOpen(Stone playedStone, short _direction, bool shouldBothOpenAtLeast1, out List<Stone> CheckedStones, out bool isJumpedBeforeTurning, short openRange = 1)
         {
             /*
              * 띈 돌 체크 메서드 2 : int CheckBrokenOpen(Stone PlayedStone, short direction) > 반환값 : 해당 방향으로 몇 개 있는지
@@ -520,13 +519,13 @@ namespace Gomoku
                 checkX = playedStone.x;
                 checkY = playedStone.y;
 
-                int debug = 0;
                 while (true)
                 {
-                    debug++;
-
                     if (!TryChangeXY((short)(checkX + directionOfStone[0]), (short)(checkY + directionOfStone[1]))) // 이동
                     {
+                        if (shouldBothOpenAtLeast1)
+                            return -1;
+
                         if (!isOneBlocked) isOneBlocked = true;
                         else
                         {
@@ -579,6 +578,9 @@ namespace Gomoku
                             {
                                 if (!TryChangeXY((short)(checkX + directionOfStone[0]), (short)(checkY + directionOfStone[1]))) // 앞으로 가기
                                 {
+                                    if (j == 0 && shouldBothOpenAtLeast1)
+                                        return -1;
+
                                     if (!isOneBlocked) isOneBlocked = true;
                                     else
                                     {
@@ -588,18 +590,18 @@ namespace Gomoku
                                     break;
                                 }
 
-                                if (playedStone.type == StoneType.Black)
+                                if (board[checkY, checkX] == StoneType.White)
                                 {
-                                    if (board[checkY, checkX] == StoneType.White)
-                                    {
-                                        if (!isOneBlocked) isOneBlocked = true;
-                                        else
-                                        {
-                                            return -1;
-                                        }
+                                    if (j == 0 && shouldBothOpenAtLeast1)
+                                        return -1;
 
-                                        break;
+                                    if (!isOneBlocked) isOneBlocked = true;
+                                    else
+                                    {
+                                        return -1;
                                     }
+
+                                    break;
                                 }
                             }
 
@@ -623,6 +625,9 @@ namespace Gomoku
                         {
                             if (!TryChangeXY((short)(checkX + directionOfStone[0]), (short)(checkY + directionOfStone[1])))
                             {
+                                if (j == 0 && shouldBothOpenAtLeast1)
+                                    return -1;
+
                                 if (!isOneBlocked) isOneBlocked = true;
                                 else
                                 {
@@ -632,31 +637,18 @@ namespace Gomoku
                                 break;
                             }
 
-                            if (playedStone.type == StoneType.Black)
+                            if (board[checkY, checkX] == StoneType.White)
                             {
-                                if (board[checkY, checkX] == StoneType.White)
-                                {
-                                    if (!isOneBlocked) isOneBlocked = true;
-                                    else
-                                    {
-                                        return -1;
-                                    }
+                                if (j == 0 && shouldBothOpenAtLeast1)
+                                    return -1;
 
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                if (board[checkY, checkX] == StoneType.Black)
+                                if (!isOneBlocked) isOneBlocked = true;
+                                else
                                 {
-                                    if (!isOneBlocked) isOneBlocked = true;
-                                    else
-                                    {
-                                        return -1;
-                                    }
-                                    break;
+                                    return -1;
                                 }
 
+                                break;
                             }
                         }
 
